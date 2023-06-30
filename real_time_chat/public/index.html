@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>실시간 채팅 프로그램</title>
+    <link rel="stylesheet" type="text/css" href="style.css" />
+    
+  </head>
+  <body>
+    <div class="chattingbox">
+        <h1>실시간 채팅 프로그램</h1>
+        <div id="usernameContainer">
+            <input type="text" id="usernameInput" placeholder="사용자 이름" />
+            <button onclick="enterChatRoom()">입장</button>
+        </div>
+        <div id="chatRoomContainer" style="display: none;">
+            <textarea id="chatTextArea"  rows="16"></textarea>
+            <br />
+            <input type="text" id="messageInput" placeholder="메시지 입력" onkeypress="handleKeyPress(event)"/>
+            <button onclick="sendMessage()">전송</button>
+            <button onclick="exitChatRoom()">나가기</button>
+        </div>
+    </div>
+    <script>
+      const ws = new WebSocket('ws://localhost:3000');
+      let isConnected = false;
+
+      const usernameContainer = document.getElementById('usernameContainer');
+      const chatRoomContainer = document.getElementById('chatRoomContainer');
+
+      const chatTextArea = document.getElementById('chatTextArea');
+
+      // WebSocket 서버로부터 메시지를 받았을 때
+      ws.onmessage = (event) => {
+        const message = JSON.parse(event.data);
+        if (message.type === 'userCount') {
+          chatTextArea.value += `현재 접속된 사용자 수: ${message.data}\n`;
+        } else if (message.type === 'chatMessage') {
+          chatTextArea.value += `${message.data}\n`;
+        }
+      };
+
+      // 채팅방으로 입장하는 함수
+      function enterChatRoom() {
+        const usernameInput = document.getElementById('usernameInput');
+        const username = usernameInput.value;
+        ws.send(JSON.stringify({ type: 'enterChatRoom', data: username }));
+
+        usernameContainer.style.display = 'none';
+        chatRoomContainer.style.display = 'block';
+        isConnected = true;
+      }
+
+      // 메시지를 전송하는 함수
+      function sendMessage() {
+        const usernameInput = document.getElementById('usernameInput');
+        const messageInput = document.getElementById('messageInput');
+        const username = usernameInput.value;
+        const message = messageInput.value;
+        ws.send(
+          JSON.stringify({ type: 'sendMessage', data: { username, message } })
+        );
+        messageInput.value = '';
+      }
+        // 엔터 키를 눌렀을 때 메시지 전송 함수 호출
+     function handleKeyPress(event) {
+        if (event.keyCode === 13) {
+          sendMessage();
+        }
+      }
+
+      // 채팅방에서 나가는 함수
+      function exitChatRoom() {
+        if (isConnected) {
+            ws.close();
+            chatRoomContainer.style.display = 'none';
+            usernameContainer.style.display = 'block';
+            chatTextArea.value = '';
+            isConnected = false;
+
+        // 로그인 화면으로 이동
+        window.location.reload(); // 현재 페이지를 새로고침하여 로그인 화면으로 이동
+        }
+    }
+    </script>
+  </body>
+</html>
